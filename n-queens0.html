@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>N-Queens | Step-by-Step Cinematic</title>
+
+<style>
+:root{
+  --green:#2bff88;
+  --red:#ff4d6d;
+  --yellow:#ffd166;
+}
+
+/* Body */
+body{
+  margin:0;
+  font-family:Segoe UI, sans-serif;
+  background: linear-gradient(135deg,#74ebd5,#9face6,#a18cd1);
+  color:#fff;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+/* Header */
+h1{
+  margin:14px;
+  text-shadow:0 0 12px rgba(255,255,255,0.7);
+}
+
+/* Input */
+.input-box{
+  background:rgba(255,255,255,0.2);
+  padding:14px 22px;
+  border-radius:14px;
+  display:flex;
+  gap:12px;
+  align-items:center;
+}
+
+input{
+  width:70px;
+  padding:8px;
+  font-size:18px;
+  border-radius:8px;
+  border:none;
+  text-align:center;
+}
+
+button{
+  padding:12px 26px;
+  border:none;
+  border-radius:30px;
+  font-size:15px;
+  cursor:pointer;
+  background: linear-gradient(45deg,#00f2ff,#ff7ad9);
+  color:white;
+  box-shadow:0 0 18px rgba(0,0,0,0.35);
+}
+
+/* Layout */
+.container{
+  display:flex;
+  gap:30px;
+  align-items:center;
+  margin-top:20px;
+}
+
+/* Board */
+.board{
+  display:grid;
+  border-radius:16px;
+  overflow:hidden;
+  backdrop-filter: blur(10px);
+  background: rgba(255,255,255,0.15);
+  box-shadow:0 0 30px rgba(0,0,0,0.35);
+}
+
+.cell{
+  width:60px;
+  height:60px;
+  font-size:42px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:0.3s;
+}
+
+.light{ background: rgba(220,240,255,0.7); color:#0b1a2a; }
+.dark{ background: rgba(140,200,220,0.7); color:#0b1a2a; }
+
+.safe{ box-shadow: inset 0 0 18px var(--green); }
+.error{ box-shadow: inset 0 0 20px var(--red); }
+.backtrack{ box-shadow: inset 0 0 20px var(--yellow); }
+
+/* Doll */
+.doll{
+  font-size:90px;
+  transition:0.4s;
+}
+
+.dance{ animation:dance 0.7s infinite; }
+@keyframes dance{
+  0%{transform:rotate(0)}
+  25%{transform:rotate(12deg)}
+  50%{transform:rotate(0)}
+  75%{transform:rotate(-12deg)}
+}
+
+.cry{ animation:cry 0.5s infinite; }
+@keyframes cry{
+  50%{transform:translateY(6px)}
+}
+
+/* Info */
+.info{
+  margin-top:14px;
+  font-size:16px;
+  text-align:center;
+}
+
+/* Cinematic Complexity Box */
+.stats{
+  margin-top:20px;
+  width:400px;
+  border-radius:25px;
+  overflow:hidden;
+  box-shadow:0 25px 50px rgba(0,0,0,0.25);
+  font-weight:600;
+  color:white;
+}
+
+.stats p{
+  margin:0;
+  padding:12px 20px;
+  border-bottom:2px solid rgba(255,255,255,0.2);
+  font-size:16px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  background:linear-gradient(135deg, #a29bfe, rgba(0,0,0,0.2));
+}
+
+.stats p:last-child{
+  border-bottom:none;
+}
+.stats span{
+  font-weight:bold;
+  color:#FFD700;
+  margin-left:10px;
+}
+
+/* Confetti */
+#confetti-container{
+  position:fixed;
+  top:0; left:0;
+  width:100%; height:100%;
+  pointer-events:none;
+  z-index:999;
+}
+.confetti{
+  position:absolute;
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  animation:fall linear forwards;
+}
+@keyframes fall{
+  100%{transform:translateY(100vh) rotate(720deg);}
+}
+</style>
+</head>
+
+<body>
+
+<h1>👑 N-Queens — Step-by-Step Visualization</h1>
+
+<div class="input-box">
+  <label>N:</label>
+  <input type="number" id="nInput" value="5" min="4" max="10">
+  <button onclick="start()">▶ Start</button>
+</div>
+
+<div class="container">
+  <div class="board" id="board"></div>
+  <div class="doll" id="doll">🙂</div>
+</div>
+
+<div class="info" id="info">Watch how backtracking works step by step</div>
+
+<div class="stats" id="complexityBox">
+  <p>⏱ Time Complexity: <span>O(N!) 🕒</span></p>
+  <p>🔍 Safety Checks: <span id="checks">0 🧐</span></p>
+  <p>♛ Placements: <span id="places">0 ✅</span></p>
+  <p>↩ Backtracks: <span id="backs">0 😵</span></p>
+</div>
+
+<div id="confetti-container"></div>
+
+<!-- Audio -->
+<audio id="bgm" loop src="christmas.mp3"></audio>
+<audio id="errorSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_11c1e7d3c8.mp3"></audio>
+<audio id="successSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_7b2c9b9c7f.mp3"></audio>
+
+<script>
+let N, queens, cells;
+let safety=0, placed=0, backtracked=0;
+
+const board=document.getElementById("board");
+const doll=document.getElementById("doll");
+const info=document.getElementById("info");
+const complexityBox=document.getElementById("complexityBox");
+
+const bgm=document.getElementById("bgm");
+const errorSound=document.getElementById("errorSound");
+const successSound=document.getElementById("successSound");
+
+const delay=(ms=500)=>new Promise(r=>setTimeout(r,ms));
+const playSound=a=>a.cloneNode().play().catch(()=>{});
+
+function buildBoard(){
+  board.innerHTML="";
+  cells=[];
+  queens=Array(N).fill(-1);
+  board.style.gridTemplateColumns=`repeat(${N},60px)`;
+
+  for(let r=0;r<N;r++){
+    for(let c=0;c<N;c++){
+      const cell=document.createElement("div");
+      cell.className="cell "+((r+c)%2?"dark":"light");
+      board.appendChild(cell);
+      cells.push(cell);
+    }
+  }
+}
+
+const cellAt=(r,c)=>cells[r*N+c];
+
+function isSafe(row,col){
+  for(let i=0;i<row;i++){
+    safety++;
+    if(queens[i]===col || Math.abs(queens[i]-col)===row-i)
+      return false;
+  }
+  return true;
+}
+
+function updateComplexity(){
+  document.getElementById("checks").innerText = safety + " 🧐";
+  document.getElementById("places").innerText = placed + " ✅";
+  document.getElementById("backs").innerText = backtracked + " 😵";
+}
+
+function confettiBurst(){
+  const box=document.getElementById("confetti-container");
+  for(let i=0;i<90;i++){
+    const c=document.createElement("div");
+    c.className="confetti";
+    c.style.background=`hsl(${Math.random()*360},80%,60%)`;
+    c.style.left=`${Math.random()*100}vw`;
+    c.style.animationDuration=`${Math.random()*2+1}s`;
+    box.appendChild(c);
+    setTimeout(()=>c.remove(),3000);
+  }
+}
+
+async function solve(row){
+  if(row===N){
+    info.innerHTML="🎉 Solution Found!";
+    doll.textContent="💃";
+    doll.className="doll dance";
+    confettiBurst();
+    return true;
+  }
+
+  for(let col=0;col<N;col++){
+    if(!isSafe(row,col)){
+      cellAt(row,col).classList.add("error");
+      doll.textContent="😢";
+      playSound(errorSound);
+      updateComplexity();
+      await delay(250);
+      cellAt(row,col).classList.remove("error");
+      continue;
+    }
+
+    queens[row]=col;
+    placed++;
+    cellAt(row,col).textContent="♕";
+    cellAt(row,col).classList.add("safe");
+    doll.textContent="🙂";
+    playSound(successSound);
+    updateComplexity();
+    await delay();
+
+    if(await solve(row+1)) return true;
+
+    queens[row]=-1;
+    backtracked++;
+    cellAt(row,col).textContent="";
+    cellAt(row,col).classList.add("backtrack");
+    doll.textContent="😵";
+    updateComplexity();
+    await delay(350);
+    cellAt(row,col).classList.remove("backtrack");
+  }
+  return false;
+}
+
+function start(){
+  N=parseInt(document.getElementById("nInput").value);
+  if(N<4){ alert("N must be ≥ 4"); return; }
+
+  safety=placed=backtracked=0;
+  buildBoard();
+  updateComplexity();
+
+  bgm.volume=0.4;
+  bgm.play().catch(()=>{});
+
+  solve(0);
+}
+</script>
+
+</body>
+</html>
